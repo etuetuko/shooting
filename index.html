@@ -1,0 +1,234 @@
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.util.*;
+import java.util.List;
+import java.util.Timer;
+
+public class EnglishSniperGUI extends JFrame {
+
+    // --- データ構造（V4から継承・整理） ---
+    static class Word {
+        String japanese, english;
+        Word(String j, String e) { this.japanese = j; this.english = e; }
+    }
+
+    private static final Map<Integer, List<Word>> UNIT_DATA = new LinkedHashMap<>();
+    static {
+        // Unit 1 (代表的な20語を抜粋)
+        UNIT_DATA.put(1, Arrays.asList(
+            new Word("休日、休暇", "holiday"), new Word("到着する", "arrive"),
+            new Word("空港", "airport"), new Word("すぐに", "soon"),
+            new Word("わくわくした", "excited"), new Word("予約", "reservation"),
+            new Word("メートル", "meter"), new Word("見つける", "find"),
+            new Word("findの過去形", "found"), new Word("言語", "language"),
+            new Word("例", "example"), new Word("意思疎通する", "communicate"),
+            new Word("機械の", "mechanical"), new Word("おもり", "weight"),
+            new Word("動力供給する", "power"), new Word("かね(の音)", "bell"),
+            new Word("改善する", "improve"), new Word("最後には", "eventually"),
+            new Word("努力", "effort"), new Word("重さがある", "weigh")
+        ));
+        // Unit 2, 3 も同様に定義可能（コード短縮のため今回はUnit1のみ実装）
+    }
+
+    // --- GUIコンポーネント ---
+    private JLabel infoLabel, quizLabel, feedbackLabel;
+    private JButton[] choiceButtons;
+    private JPanel quizPanel, startPanel;
+
+    // --- ゲームロジック用変数 ---
+    private List<Word> currentQuizList;
+    private int currentQuestionIndex = 0;
+    private int score = 0;
+    private Word currentTarget;
+
+    public EnglishSniperGUI() {
+        // ウィンドウの基本設定
+        setTitle("中2英語：英単語スナイパー 20 Questions");
+        setSize(600, 450);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLocationRelativeTo(null); // 画面中央に表示
+        setLayout(new CardLayout()); // 画面切り替え用のレイアウト
+
+        initStartPanel();
+        initQuizPanel();
+
+        // 初期画面をスタート画面に設定
+        add(startPanel, "start");
+        add(quizPanel, "quiz");
+    }
+
+    // --- スタート画面の初期化 ---
+    private void initStartPanel() {
+        startPanel = new JPanel();
+        startPanel.setLayout(new BorderLayout());
+        startPanel.setBackground(new Color(30, 30, 40)); // ダークブルー背景
+
+        JLabel titleLabel = new JLabel("ENGLISH SNIPER", JLabel.CENTER);
+        titleLabel.setFont(new Font("Arial", Font.BOLD, 40));
+        titleLabel.setForeground(Color.WHITE);
+        titleLabel.setBorder(BorderFactory.createEmptyBorder(50, 0, 0, 0));
+
+        JButton startButton = new JButton("MISSION START (Unit 1)");
+        startButton.setFont(new Font("Arial", Font.PLAIN, 20));
+        startButton.setFocusPainted(false);
+        startButton.addActionListener(e -> startGame(1)); // Unit 1固定で開始
+
+        startPanel.add(titleLabel, BorderLayout.NORTH);
+        startPanel.add(startButton, BorderLayout.CENTER);
+    }
+
+    // --- クイズ画面の初期化 ---
+    private void initQuizPanel() {
+        quizPanel = new JPanel();
+        quizPanel.setLayout(new BorderLayout());
+        quizPanel.setBackground(Color.BLACK);
+
+        // 上部パネル（情報表示）
+        JPanel topPanel = new JPanel(new GridLayout(2, 1));
+        topPanel.setBackground(Color.BLACK);
+        infoLabel = new JLabel("", JLabel.CENTER);
+        infoLabel.setForeground(Color.LIGHT_GRAY);
+        feedbackLabel = new JLabel("Ready...", JLabel.CENTER);
+        feedbackLabel.setFont(new Font("Serif", Font.BOLD, 18));
+        feedbackLabel.setForeground(Color.CYAN);
+        topPanel.add(infoLabel);
+        topPanel.add(feedbackLabel);
+
+        // 中央パネル（問題表示）
+        quizLabel = new JLabel("問題", JLabel.CENTER);
+        quizLabel.setFont(new Font("Meiryo", Font.BOLD, 36)); // 日本語が見やすいフォント
+        quizLabel.setForeground(Color.WHITE);
+
+        // 下部パネル（選択肢ボタン）
+        JPanel bottomPanel = new JPanel(new GridLayout(2, 2, 10, 10)); // 2x2のグリッド
+        bottomPanel.setBackground(Color.BLACK);
+        bottomPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        choiceButtons = new JButton[4];
+        for (int i = 0; i < 4; i++) {
+            choiceButtons[i] = new JButton("");
+            choiceButtons[i] = new JButton(""); choiceButtons[i].setFont(new Font("Arial", Font.PLAIN, 18));
+            choiceButtons[i].setFocusPainted(false);
+            choiceButtons[i].addActionListener(new ChoiceAction());
+            bottomPanel.add(choiceButtons[i]);
+        }
+
+        quizPanel.add(topPanel, BorderLayout.NORTH);
+        quizPanel.add(quizLabel, BorderLayout.CENTER);
+        quizPanel.add(bottomPanel, BorderLayout.SOUTH);
+    }
+
+    // --- ゲーム開始処理 ---
+    private void startGame(int unitId) {
+        List<Word> originList = UNIT_DATA.get(unitId);
+        currentQuizList = new ArrayList<>(originList);
+        Collections.shuffle(currentQuizList); // ランダム順に
+        currentQuestionIndex = 0;
+        score = 0;
+        feedbackLabel.setText("MISSION STARTED!");
+        feedbackLabel.setForeground(Color.CYAN);
+
+        // クイズ画面へ切り替え
+        CardLayout cl = (CardLayout) (getContentPane().getLayout());
+        cl.show(getContentPane(), "quiz");
+
+        showNextQuestion();
+    }
+
+    // --- 次の問題を表示 ---
+    private void showNextQuestion() {
+        if (currentQuestionIndex >= 20) {
+            showResult();
+            return;
+        }
+
+        currentTarget = currentQuizList.get(currentQuestionIndex);
+        
+        // 進捗表示を更新
+        infoLabel.setText("SCORE: " + score + " | Question: " + (currentQuestionIndex + 1) + " / 20");
+        quizLabel.setText(currentTarget.japanese);
+
+        // 選択肢の生成とシャッフル
+        List<String> choices = generateChoices(currentTarget.english, currentQuizList);
+        for (int i = 0; i < 4; i++) {
+            choiceButtons[i].setText(choices.get(i));
+            choiceButtons[i].setBackground(Color.WHITE); // ボタンの色をリセット
+            choiceButtons[i].setEnabled(true);
+        }
+    }
+
+    // --- 選択肢生成（重複なし） ---
+    private List<String> generateChoices(String correct, List<Word> allWords) {
+        Set<String> choiceSet = new LinkedHashSet<>();
+        choiceSet.add(correct);
+        Random r = new Random();
+        while (choiceSet.size() < 4) {
+            choiceSet.add(allWords.get(r.nextInt(allWords.size())).english);
+        }
+        List<String> result = new ArrayList<>(choiceSet);
+        Collections.shuffle(result);
+        return result;
+    }
+
+    // --- 結果発表 ---
+    private void showResult() {
+        String rank;
+        if (score == 2000) rank = "SSS (LEGEND)";
+        else if (score >= 1600) rank = "S (ELITE)";
+        else if (score >= 1200) rank = "A (ROOKIE)";
+        else rank = "B (NEED TRAINING)";
+
+        JOptionPane.showMessageDialog(this,
+            "MISSION COMPLETE!\nFINAL SCORE: " + score + "\nRANK: " + rank,
+            "Result",
+            JOptionPane.INFORMATION_MESSAGE);
+
+        // スタート画面に戻る
+        CardLayout cl = (CardLayout) (getContentPane().getLayout());
+        cl.show(getContentPane(), "start");
+    }
+
+    // --- ボタンクリック時のアクション ---
+    private class ChoiceAction implements ActionListener {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            JButton clickedButton = (JButton) e.getSource();
+            String selectedEnglish = clickedButton.getText();
+
+            // 全ボタンを一瞬無効化（連打防止）
+            for (JButton btn : choiceButtons) btn.setEnabled(false);
+
+            if (selectedEnglish.equals(currentTarget.english)) {
+                // 正解の演出
+                score += 100;
+                feedbackLabel.setText("🎯 HIT!!");
+                feedbackLabel.setForeground(Color.GREEN);
+                clickedButton.setBackground(new Color(200, 255, 200)); // 薄緑
+            } else {
+                // 不正解の演出
+                feedbackLabel.setText("💀 MISS! (Correct: " + currentTarget.english + ")");
+                feedbackLabel.setForeground(Color.RED);
+                clickedButton.setBackground(new Color(255, 200, 200)); // 薄赤
+            }
+
+            // 1秒後に次の問題へ（タイマーを使用）
+            Timer timer = new Timer();
+            timer.schedule(new TimerTask() {
+                @Override
+                public void run() {
+                    currentQuestionIndex++;
+                    showNextQuestion();
+                }
+            }, 1000); // 1000ミリ秒 = 1秒
+        }
+    }
+
+    // --- メインメソッド ---
+    public static void main(String[] args) {
+        // GUIは専用のスレッドで実行する必要がある
+        SwingUtilities.invokeLater(() -> {
+            new EnglishSniperGUI().setVisible(true);
+        });
+    }
+}
