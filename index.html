@@ -2,177 +2,193 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>中2英語：English Sniper</title>
+    <title>ENGLISH SNIPER: FULL IMPACT</title>
     <style>
-        body {
-            background-color: #1a1a2e;
-            color: white;
-            font-family: 'Helvetica Neue', Arial, sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            margin: 0;
-            overflow: hidden;
-        }
-        #game-container {
-            width: 600px;
-            background: #16213e;
-            padding: 20px;
-            border-radius: 15px;
-            box-shadow: 0 0 20px rgba(0,255,255,0.2);
-            text-align: center;
-        }
-        .screen { display: none; }
-        .active { display: block; }
+        :root { --neon: #00f2fe; --err: #ff0055; --bg: #050a14; }
+        body { background: var(--bg); color: #fff; font-family: 'Helvetica Neue', Arial, sans-serif; margin: 0; text-align: center; overflow: hidden; }
+        #app { width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle, #001, #005); transition: background 0.1s; }
+        .panel { width: 95%; max-width: 600px; background: rgba(0, 10, 30, 0.95); border: 2px solid #00f2fe; padding: 25px; border-radius: 20px; box-shadow: 0 0 30px #00f2fe; position: relative; }
         
-        h1 { color: #4ecca3; font-size: 2em; margin-bottom: 10px; }
-        .info { color: #95a5a6; margin-bottom: 20px; }
+        #scr-game, #scr-res { display: none; }
+
+        h1 { color: #00f2fe; font-size: 3em; margin: 0; text-shadow: 0 0 20px #00f2fe; letter-spacing: 5px; }
+        .menu-btn { width: 100%; padding: 20px; margin: 15px 0; font-size: 1.2em; cursor: pointer; border: 2px solid #4ecca3; background: none; color: #4ecca3; font-weight: bold; border-radius: 50px; transition: 0.3s; }
+        .menu-btn:hover { background: #4ecca3; color: #000; box-shadow: 0 0 20px #4ecca3; }
+
+        /* モンスターエリア */
+        #battle-field { height: 220px; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; border-bottom: 1px solid rgba(0,242,254,0.3); margin-bottom: 15px; }
+        #monster-emoji { font-size: 6em; margin-bottom: 5px; transition: 0.2s; filter: drop-shadow(0 0 15px #fff); z-index: 5; }
+        #monster-name { font-size: 2.5em; font-weight: bold; color: #fff; text-shadow: 0 0 10px var(--neon); }
         
-        #question-text { font-size: 2.5em; margin: 40px 0; font-weight: bold; }
+        /* 撃破演出 */
+        .explode { animation: explodeAnim 0.7s ease-out forwards; pointer-events: none; }
+        @keyframes explodeAnim {
+            0% { transform: scale(1) rotate(0deg); filter: brightness(1); }
+            30% { transform: scale(1.6) rotate(-25deg); filter: brightness(5); }
+            100% { transform: scale(0) rotate(1200deg) translate(800px, -800px); opacity: 0; }
+        }
+
+        /* 画面の揺れ（ミス時） */
+        .shake { animation: shakeAnim 0.4s linear; }
+        @keyframes shakeAnim {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-15px); }
+            20%, 40%, 60%, 80% { transform: translateX(15px); }
+        }
+
+        /* 赤点滅（ミス時） */
+        .damage-bg { background: radial-gradient(circle, #ff0055, #400) !important; }
+
+        #combo-msg { position: absolute; top: 10px; right: 10px; color: #fdbb2d; font-size: 1.8em; font-weight: bold; font-style: italic; opacity: 0; transition: 0.2s; z-index: 10; }
+        .combo-active { opacity: 1 !important; transform: scale(1.3) rotate(-5deg); }
+
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .choice { padding: 25px 5px; font-size: 1.4em; background: #051a3a; border: 1px solid #00f2fe; color: #fff; cursor: pointer; border-radius: 10px; transition: 0.2s; }
+        .choice:hover:not(:disabled) { background: var(--neon); color: #000; box-shadow: 0 0 15px var(--neon); }
         
-        .grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-        }
-        button {
-            padding: 15px;
-            font-size: 1.2em;
-            cursor: pointer;
-            border: none;
-            border-radius: 8px;
-            background: #0f3460;
-            color: white;
-            transition: 0.2s;
-        }
-        button:hover { background: #e94560; transform: scale(1.02); }
-        .unit-btn { width: 100%; margin-bottom: 10px; background: #4ecca3; color: #1a1a2e; font-weight: bold; }
-        
-        #feedback { height: 30px; font-weight: bold; margin-top: 10px; }
-        .correct { color: #4ecca3; }
-        .incorrect { color: #e94560; }
-        
-        #progress-bar {
-            width: 100%;
-            height: 10px;
-            background: #0f3460;
-            border-radius: 5px;
-            margin-bottom: 20px;
-        }
-        #progress-fill {
-            width: 0%;
-            height: 100%;
-            background: #4ecca3;
-            border-radius: 5px;
-            transition: 0.3s;
-        }
+        .status { display: flex; justify-content: space-between; color: #00f2fe; font-size: 1.1em; margin-bottom: 10px; font-family: 'Courier New', monospace; font-weight: bold; }
+        #res-rank { font-size: 7em; font-weight: bold; margin: 5px 0; }
     </style>
 </head>
 <body>
 
-<div id="game-container">
-    <div id="start-screen" class="screen active">
-        <h1>ENGLISH SNIPER</h1>
-        <p class="info">中学2年生：英単語ミッション</p>
-        <button class="unit-btn" onclick="startGame(1)">Unit 1-3 & LR1 (旅行・歴史)</button>
-        <button class="unit-btn" onclick="startGame(2)">Unit 4-6 & LR2 (ルール・比較)</button>
-        <button class="unit-btn" onclick="startGame(3)">Unit 7 & LR3 (環境・世界遺産)</button>
+<div id="app">
+    <div id="scr-start" class="panel" style="display:block;">
+        <h1>SNIPER</h1>
+        <p style="color:#888; letter-spacing:2px;">- IMPACT EDITION -</p>
+        <button class="menu-btn" onclick="start(1)">MISSION 1 (Unit 1-3)</button>
+        <button class="menu-btn" onclick="start(2)">MISSION 2 (Unit 4-6)</button>
+        <button class="menu-btn" onclick="start(3)">MISSION 3 (Unit 7 / LR)</button>
     </div>
 
-    <div id="game-screen" class="screen">
-        <div id="progress-bar"><div id="progress-fill"></div></div>
-        <div id="score-display">SCORE: 0</div>
-        <div id="question-text">日本語</div>
-        <div class="grid" id="choices-grid">
-            <button onclick="checkAnswer(0)">Choice 1</button>
-            <button onclick="checkAnswer(1)">Choice 2</button>
-            <button onclick="checkAnswer(2)">Choice 3</button>
-            <button onclick="checkAnswer(3)">Choice 4</button>
+    <div id="scr-game" class="panel">
+        <div class="status">
+            <span id="st-step">1/40</span>
+            <span id="st-score">SCORE: 0</span>
+            <span id="st-life" style="color:#ff0055;">ARMOR: ▮▮▮</span>
         </div>
-        <div id="feedback"></div>
+        <div id="battle-field">
+            <div id="combo-msg">0 COMBO!</div>
+            <div id="monster-emoji">👾</div>
+            <div id="monster-name">TARGET</div>
+        </div>
+        <div class="grid">
+            <button id="c0" class="choice" onclick="shot(0)"></button>
+            <button id="c1" class="choice" onclick="shot(1)"></button>
+            <button id="c2" class="choice" onclick="shot(2)"></button>
+            <button id="c3" class="choice" onclick="shot(3)"></button>
+        </div>
     </div>
 
-    <div id="result-screen" class="screen">
-        <h1>MISSION COMPLETE</h1>
-        <p id="final-score" style="font-size: 1.5em;"></p>
-        <p id="final-rank" style="color: #4ecca3; font-weight: bold;"></p>
-        <button onclick="location.reload()">もう一度プレイ</button>
+    <div id="scr-res" class="panel">
+        <h1 id="res-title">RESULT</h1>
+        <div id="res-rank">S</div>
+        <p id="res-score" style="font-size:2.5em; color:#00f2fe; margin:0;"></p>
+        <button class="menu-btn" onclick="location.reload()">RE-LOAD</button>
     </div>
 </div>
 
 <script>
-const wordData = {
-    1: [
-        {j: "休日、休暇", e: "holiday"}, {j: "到着する", e: "arrive"}, {j: "空港", e: "airport"}, {j: "すぐに", e: "soon"},
-        {j: "わくわくした", e: "excited"}, {j: "予約", e: "reservation"}, {j: "メートル", e: "meter"}, {j: "重さがある", e: "weigh"},
-        {j: "見つける", e: "find"}, {j: "findの過去形", e: "found"}, {j: "言語", e: "language"}, {j: "例", e: "example"},
-        {j: "意思疎通する", e: "communicate"}, {j: "機械の", e: "mechanical"}, {j: "おもり", e: "weight"}, {j: "動力供給する", e: "power"},
-        {j: "かね(の音)", e: "bell"}, {j: "改善する", e: "improve"}, {j: "最後には", e: "eventually"}, {j: "努力", e: "effort"}
-    ],
-    2: [
-        {j: "ホームステイ", e: "homestay"}, {j: "助言", e: "advice"}, {j: "一員", e: "member"}, {j: "従う、守る", e: "follow"},
-        {j: "規則、ルール", e: "rule"}, {j: "完璧な", e: "perfect"}, {j: "～しなければならない", e: "must"}, {j: "～すべきである", e: "should"},
-        {j: "傷つける", e: "hurt"}, {j: "感情", e: "feeling"}, {j: "説明する", e: "explain"}, {j: "経験", e: "experience"},
-        {j: "よりきれいな", e: "cleaner"}, {j: "最も", e: "most"}, {j: "～より", e: "than"}, {j: "病気の", e: "ill"},
-        {j: "手術", e: "operation"}, {j: "生きている", e: "alive"}, {j: "請求書", e: "bill"}, {j: "恐れて", e: "afraid"}
-    ],
-    3: [
-        {j: "選ぶ", e: "select"}, {j: "遺産", e: "heritage"}, {j: "遺跡", e: "site"}, {j: "自然の", e: "natural"},
-        {j: "文化の", e: "cultural"}, {j: "基準", e: "standard"}, {j: "決める", e: "decide"}, {j: "knowの過去分詞", e: "known"},
-        {j: "多様性", e: "diversity"}, {j: "buildの過去分詞", e: "built"}, {j: "汚染", e: "pollution"}, {j: "政府", e: "government"},
-        {j: "キャンプする", e: "camp"}, {j: "野生の", e: "wild"}, {j: "自由", e: "freedom"}, {j: "突然", e: "suddenly"},
-        {j: "姿を消す", e: "disappear"}, {j: "地球温暖化", e: "global warming"}, {j: "十分な", e: "enough"}, {j: "地球", e: "Earth"}
-    ]
+// データ部分は維持
+const data = {
+    1: [{j:"休日",e:"holiday",m:"🏖️"},{j:"到着する",e:"arrive",m:"🛬"},{j:"空港",e:"airport",m:"🛸"},{j:"すぐに",e:"soon",m:"🏃"},{j:"わくわくした",e:"excited",m:"🤩"},{j:"予約",e:"reservation",m:"📝"},{j:"メートル",e:"meter",m:"📏"},{j:"身長が…",e:"tall",m:"🦒"},{j:"重さがある",e:"weigh",m:"⚖️"},{j:"トン",e:"ton",m:"🐘"},{j:"見つける",e:"find",m:"🔍"},{j:"found",e:"found",m:"💎"},{j:"言語",e:"language",m:"🗣️"},{j:"ドル",e:"dollar",m:"💰"},{j:"例",e:"example",m:"💡"},{j:"意思疎通",e:"communicate",m:"📡"},{j:"機械の",e:"mechanical",m:"⚙️"},{j:"おもり",e:"weight",m:"🏋️"},{j:"時刻",e:"hour",m:"⏰"},{j:"かね",e:"bell",m:"🔔"},{j:"重い",e:"heavy",m:"🪨"},{j:"動かす",e:"move",m:"🚜"},{j:"改善する",e:"improve",m:"📈"},{j:"軽い",e:"light",m:"🎈"},{j:"最後には",e:"eventually",m:"🏁"},{j:"始める",e:"begin",m:"🎬"},{j:"began",e:"began",m:"📜"},{j:"運ぶ",e:"carry",m:"📦"},{j:"種類",e:"type",m:"🧬"},{j:"結果",e:"result",m:"📊"},{j:"努力",e:"effort",m:"🔥"},{j:"…でさえ",e:"even",m:"🧊"},{j:"認識する",e:"recognize",m:"🆔"},{j:"動力",e:"power",m:"⚡"},{j:"場所",e:"place",m:"📍"},{j:"歴史",e:"history",m:"🏺"},{j:"科学者",e:"scientist",m:"🧪"},{j:"発明する",e:"invent",m:"🛠️"},{j:"便利な",e:"useful",m:"📱"},{j:"世紀",e:"century",m:"🏰"}],
+    2: [{j:"ホームステイ",e:"homestay",m:"🏠"},{j:"助言",e:"advice",m:"🦉"},{j:"一員",e:"member",m:"🤝"},{j:"客",e:"guest",m:"🤵"},{j:"従う",e:"follow",m:"🐕"},{j:"規則",e:"rule",m:"📏"},{j:"完璧な",e:"perfect",m:"✨"},{j:"must",e:"must",m:"👮"},{j:"限界",e:"limit",m:"🚫"},{j:"mustn't",e:"mustn't",m:"🛑"},{j:"年配の",e:"elderly",m:"👴"},{j:"終える",e:"finish",m:"🏁"},{j:"nothing",e:"nothing",m:"🕳️"},{j:"should",e:"should",m:"⚖️"},{j:"傷つける",e:"hurt",m:"💥"},{j:"感情",e:"feeling",m:"🌈"},{j:"答える",e:"answer",m:"🎤"},{j:"説明する",e:"explain",m:"👨‍🏫"},{j:"感じる",e:"feel",m:"🧠"},{j:"sent",e:"sent",m:"📩"},{j:"woke",e:"woke",m:"⏰"},{j:"封筒",e:"envelope",m:"✉️"},{j:"請求書",e:"bill",m:"🧾"},{j:"afraid",e:"afraid",m:"😱"},{j:"内側に",e:"inside",m:"📦"},{j:"以前より",e:"before",m:"🕰️"},{j:"きれいな",e:"cleaner",m:"🧹"},{j:"most",e:"most",m:"🏆"},{j:"than",e:"than",m:"⚖️"},{j:"病気の",e:"ill",m:"🤒"},{j:"手術",e:"operation",m:"😷"},{j:"生きて",e:"alive",m:"🌱"},{j:"驚いた",e:"surprised",m:"😲"},{j:"経験",e:"experience",m:"🌍"},{j:"病院",e:"hospital",m:"🏥"},{j:"健康",e:"health",m:"🥗"},{j:"平和",e:"peace",m:"🕊️"},{j:"世界",e:"world",m:"🌐"},{j:"注意深く",e:"carefully",m:"🧐"},{j:"簡単な",e:"easy",m:"🍰"}],
+    3: [{j:"選ぶ",e:"select",m:"🖱️"},{j:"遺産",e:"heritage",m:"🏛️"},{j:"遺跡",e:"site",m:"🏕️"},{j:"自然の",e:"natural",m:"🌿"},{j:"文化の",e:"cultural",m:"🎨"},{j:"混合した",e:"mixed",m:"🍲"},{j:"選択",e:"selection",m:"✅"},{j:"基準",e:"standard",m:"📏"},{j:"決める",e:"decide",m:"🤔"},{j:"故郷",e:"hometown",m:"🏘️"},{j:"known",e:"known",m:"📖"},{j:"植物",e:"plant",m:"🌵"},{j:"多様性",e:"diversity",m:"🧩"},{j:"種",e:"species",m:"🦎"},{j:"built",e:"built",m:"🏗️"},{j:"おおう",e:"cover",m:"🧥"},{j:"原料",e:"material",m:"🪵"},{j:"汚染",e:"pollution",m:"🏭"},{j:"政府",e:"government",m:"🏢"},{j:"戻る",e:"return",m:"🔄"},{j:"キャンプ",e:"camp",m:"🔥"},{j:"野生の",e:"wild",m:"🐅"},{j:"さびしい",e:"lonely",m:"🏚️"},{j:"自由",e:"freedom",m:"🦅"},{j:"光景",e:"scene",m:"📸"},{j:"突然",e:"suddenly",m:"⚡"},{j:"姿を消す",e:"disappear",m:"💨"},{j:"地球温暖化",e:"global warming",m:"🌡️"},{j:"十分な",e:"enough",m:"🈵"},{j:"grow",e:"grow",m:"🌳"},{j:"失う",e:"lose",m:"🥀"},{j:"島",e:"island",m:"🏝️"},{j:"ゆっくり",e:"slowly",m:"🐢"},{j:"2倍",e:"twice",m:"✌️"},{j:"地球",e:"Earth",m:"🌏"},{j:"過去",e:"past",m:"🕰️"},{j:"伝える",e:"pass",m:"🤝"},{j:"美しい",e:"beautiful",m:"💎"},{j:"守る",e:"protect",m:"🛡️"},{j:"amazing",e:"amazing",m:"🌟"}]
 };
 
-let currentQuiz = [];
-let currentIndex = 0;
-let score = 0;
-let choices = [];
+let qList = [], now = 0, hp = 3, score = 0, currentChoices = [], mNum = 1, combo = 0;
 
-function startGame(unitId) {
-    currentQuiz = [...wordData[unitId]].sort(() => Math.random() - 0.5);
-    currentIndex = 0;
-    score = 0;
-    showScreen('game-screen');
-    nextQuestion();
+function start(m) {
+    mNum = m;
+    qList = [...data[m]].sort(() => Math.random() - 0.5);
+    now = 0; hp = 3; score = 0; combo = 0;
+    document.getElementById('scr-start').style.display = 'none';
+    document.getElementById('scr-game').style.display = 'block';
+    update();
 }
 
-function nextQuestion() {
-    if (currentIndex >= currentQuiz.length) {
-        showResult();
-        return;
-    }
+function update() {
+    if (now >= 40 || hp <= 0) { showResult(); return; }
+    const q = qList[now];
+    const emoji = document.getElementById('monster-emoji');
+    const name = document.getElementById('monster-name');
     
-    const target = currentQuiz[currentIndex];
-    document.getElementById('question-text').innerText = target.j;
-    document.getElementById('score-display').innerText = `SCORE: ${score}`;
-    document.getElementById('feedback').innerText = "";
-    document.getElementById('progress-fill').style.width = `${(currentIndex / 20) * 100}%`;
+    emoji.innerText = q.m;
+    emoji.className = "";
+    name.innerText = q.j;
+    name.style.opacity = "1";
 
-    // 選択肢作成
-    choices = [target.e];
-    const allWords = currentQuiz.map(w => w.e);
-    while (choices.length < 4) {
-        let dummy = allWords[Math.floor(Math.random() * allWords.length)];
-        if (!choices.includes(dummy)) choices.push(dummy);
+    document.getElementById('st-step').innerText = "TARGET: " + (now + 1) + " / 40";
+    document.getElementById('st-score').innerText = "SCORE: " + score;
+    document.getElementById('st-life').innerText = "ARMOR: " + "▮".repeat(hp);
+
+    currentChoices = [q.e];
+    while(currentChoices.length < 4) {
+        let r = data[mNum][Math.floor(Math.random() * 40)].e;
+        if(!currentChoices.includes(r)) currentChoices.push(r);
     }
-    choices.sort(() => Math.random() - 0.5);
+    currentChoices.sort(() => Math.random() - 0.5);
 
-    const buttons = document.querySelectorAll('#choices-grid button');
-    buttons.forEach((btn, i) => {
-        btn.innerText = choices[i];
-        btn.disabled = false;
-        btn.style.background = "#0f3460";
-    });
+    for(let i=0; i<4; i++) {
+        const b = document.getElementById('c' + i);
+        b.innerText = currentChoices[i];
+        b.disabled = false;
+        b.style.background = "#051a3a";
+    }
 }
 
-function checkAnswer(index) {
-    const buttons = document.querySelectorAll('#choices-grid button');
-    buttons.forEach(btn => btn.disabled = true);
+function shot(i) {
+    const isCorrect = currentChoices[i] === qList[now].e;
+    const btns = document.querySelectorAll('.choice');
+    const app = document.getElementById('app');
+    const gamePanel = document.getElementById('scr-game');
+    btns.forEach(b => b.disabled = true);
 
-    const selected = choices[index];
-    const correct = currentQuiz[currentIndex].e;
-    const feedback
+    if(isCorrect) {
+        combo++;
+        score += 100 + (combo * 10);
+        document.getElementById('monster-emoji').classList.add('explode');
+        document.getElementById('monster-name').style.opacity = "0";
+        const cMsg = document.getElementById('combo-msg');
+        if(combo >= 2) {
+            cMsg.innerText = combo + " COMBO!";
+            cMsg.classList.add('combo-active');
+        }
+    } else {
+        // ミス時のインパクト演出
+        combo = 0; hp--;
+        document.getElementById('combo-msg').classList.remove('combo-active');
+        app.classList.add('damage-bg');
+        gamePanel.classList.add('shake');
+        btns[i].style.background = "#ff0055";
+        
+        setTimeout(() => {
+            app.classList.remove('damage-bg');
+            gamePanel.classList.remove('shake');
+            alert("⚠️ SYSTEM DAMAGED! \n正解は: " + qList[now].e);
+        }, 400);
+    }
+
+    setTimeout(() => { now++; update(); }, 800);
+}
+
+function showResult() {
+    document.getElementById('scr-game').style.display = 'none';
+    document.getElementById('scr-res').style.display = 'block';
+    document.getElementById('res-score').innerText = score + " PTS";
+    const r = document.getElementById('res-rank');
+    if(hp <= 0) {
+        document.getElementById('res-title').innerText = "MISSION FAILED";
+        r.innerText = "E"; r.style.color = "#666";
+    } else {
+        document.getElementById('res-title').innerText = "MISSION COMPLETE!";
+        if(score >= 5000) { r.innerText = "SSS"; r.style.color = "#fdbb2d"; r.style.textShadow="0 0 30px #fdbb2d"; }
+        else if(score >= 4500) { r.innerText = "SS"; r.style.color = "#ff4560"; }
+        else if(score >= 4000) { r.innerText = "S"; r.style.color = "#fff"; }
+        else if(score >= 3000) { r.innerText = "A"; r.style.color = "#4ecca3"; }
+        else { r.innerText = "B"; r.style.color = "#00f2fe"; }
+    }
+}
+</script>
+</body>
+</html>
